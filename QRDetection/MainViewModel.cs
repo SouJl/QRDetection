@@ -19,7 +19,7 @@ using System.Linq;
 
 namespace QRDetection
 {
-    class MainViewModel:PropertyChangedBase
+    class MainViewModel : PropertyChangedBase
     {
         private readonly VideoCapture _webcamCapture;
 
@@ -59,7 +59,7 @@ namespace QRDetection
             get => _dataUsers;
             set
             {
-                if(_dataUsers != value)
+                if (_dataUsers != value)
                 {
                     _dataUsers = value;
                     NotifyOfPropertyChange(() => DataUsers);
@@ -141,6 +141,8 @@ namespace QRDetection
 
         private QrTypEnum _qrTyp;
 
+        private Result _qrDataResult;
+
         public MainViewModel()
         {
             barcode = new BarcodeReader();
@@ -187,7 +189,7 @@ namespace QRDetection
                     _qrTyp = QrTypEnum.StaticQr;
                     SystemReady = true;
                 });
-            }       
+            }
         }
 
         public ICommand DynamicQrDetectCommand
@@ -213,27 +215,27 @@ namespace QRDetection
         {
             if (Frame != null)
             {
-                Result result = barcode.Decode(Frame.ToBitmap());
-                if (result != null)
+                //Result result = barcode.Decode(Frame.ToBitmap());
+                if (_qrDataResult != null)
                 {
-                    string qrdata = result.ToString();
+                    string qrdata = _qrDataResult.ToString();
                     qrdata.Trim();
                     if (DataUsers != null)
                     {
-                        if (DataUsers.Any(u=>u.IdentificateCode == qrdata)) 
+                        if (DataUsers.Any(u => u.IdentificateCode == qrdata))
                         {
                             Text = "доступ разрешен";
                             UserText = $"добро пожаловать {DataUsers.Where(u => u.IdentificateCode == qrdata).First().Login}";
                             AccessState = true;
                         }
-                        else 
+                        else
                         {
                             Text = "доступ запрещен";
                             UserText = $"пользователь не найден";
                             AccessState = false;
                         }
                     }
-               
+
                 }
                 else
                 {
@@ -247,10 +249,10 @@ namespace QRDetection
         {
             if (Frame != null)
             {
-                Result result = barcode.Decode(Frame.ToBitmap());
-                if (result != null)
+                //Result result = barcode.Decode(Frame.ToBitmap());
+                if (_qrDataResult != null)
                 {
-                    string url = result.ToString();
+                    string url = _qrDataResult.ToString();
                     if (url.Contains("https"))
                     {
                         string qrcode = GetTextFromQrUrl(url);
@@ -283,13 +285,29 @@ namespace QRDetection
                 if (frame != null)
                 {
                     Frame = frame;
-                    WebCamImage = BitmapToImageSource(frame.ToBitmap());
+                    _qrDataResult = barcode.Decode(Frame.ToBitmap());
+                    if (_qrDataResult != null)
+                    {
+                        var QrPoint = _qrDataResult.ResultPoints;
+                        if (QrPoint.Length > 3)
+                        {
+                            Point[] QrDetectsqr = new Point[]
+                            {
+                            new Point { X = (int)QrPoint[0].X, Y = (int)QrPoint[0].Y} ,
+                            new Point { X = (int)QrPoint[1].X, Y = (int)QrPoint[1].Y },
+                            new Point { X = (int)QrPoint[2].X, Y = (int)QrPoint[2].Y } ,
+                            new Point { X = (int)QrPoint[3].X, Y = (int)QrPoint[3].Y }
+                            };
+                            Frame.DrawPolyline(QrDetectsqr, true, new Bgr(Color.Red), 3);
+                        }
+                    }              
+                    WebCamImage = BitmapToImageSource(Frame.ToBitmap());
                 }
             }
             else WebCamState = true;
         }
 
-        private void _dorStateChange_Elapsed(object senser, ElapsedEventArgs e) 
+        private void _dorStateChange_Elapsed(object senser, ElapsedEventArgs e)
         {
             if (AccessState)
             {
